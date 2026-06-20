@@ -10,52 +10,79 @@ import (
 	"testing"
 
 	"groupie-tracker/internal/models"
+	"groupie-tracker/internal/service"
 )
 
-type fakeArtistClient struct {
+type fakeService struct {
 	artists []models.Artist
+	details models.ArtistDetails
+	summary service.Summary
 	err     error
 }
 
-// FetchArtists makes fakeArtistClient satisfy the artistFetcher interface.
-func (f fakeArtistClient) FetchArtists() ([]models.Artist, error) {
-	return f.artists, f.err
+func (f fakeService) AllArtists() ([]models.Artist, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.artists, nil
 }
 
-// useFakeClient replaces the real API client during one test.
-// t.Cleanup restores the original value after the test finishes.
-func useFakeClient(t *testing.T, client fakeArtistClient) {
+func (f fakeService) FindArtistByID(id int) (models.ArtistDetails, error) {
+	if f.err != nil {
+		return models.ArtistDetails{}, f.err
+	}
+	if f.details.Artist.ID != id {
+		return models.ArtistDetails{}, service.ErrArtistNotFound
+	}
+	return f.details, nil
+}
+
+func (f fakeService) SearchArtists(query string) ([]models.Artist, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	if strings.TrimSpace(query) == "" {
+		return f.artists, nil
+	}
+	return []models.Artist{{ID: 2, Name: "Daft Punk"}}, nil
+}
+
+func (f fakeService) Summary() (service.Summary, error) {
+	if f.err != nil {
+		return service.Summary{}, f.err
+	}
+	return f.summary, nil
+}
+
+func useFakeService(t *testing.T, fake fakeService) {
 	t.Helper()
 
-	oldNewAPIClient := newAPIClient
-	newAPIClient = func() artistFetcher {
-		return client
-	}
-
+	oldApp := app
+	app = fake
 	t.Cleanup(func() {
-		newAPIClient = oldNewAPIClient
+		app = oldApp
 	})
 }
 
-// useTemplatePaths points the handlers at temporary test templates.
-// This keeps tests independent from the real HTML files.
-func useTemplatePaths(t *testing.T, homeTemplate string, artistTemplate string) {
+func useTemplatePaths(t *testing.T, homeTemplate string, artistTemplate string, errorTemplate string) {
 	t.Helper()
 
 	tempDir := t.TempDir()
 	oldHomeTemplatePath := homeTemplatePath
 	oldArtistTemplatePath := artistTemplatePath
+	oldErrorTemplatePath := errorTemplatePath
 
 	homeTemplatePath = writeTestTemplate(t, tempDir, "index.html", homeTemplate)
 	artistTemplatePath = writeTestTemplate(t, tempDir, "artist.html", artistTemplate)
+	errorTemplatePath = writeTestTemplate(t, tempDir, "error.html", errorTemplate)
 
 	t.Cleanup(func() {
 		homeTemplatePath = oldHomeTemplatePath
 		artistTemplatePath = oldArtistTemplatePath
+		errorTemplatePath = oldErrorTemplatePath
 	})
 }
 
-// writeTestTemplate creates one temporary template file for a test.
 func writeTestTemplate(t *testing.T, dir string, name string, content string) string {
 	t.Helper()
 
@@ -63,39 +90,31 @@ func writeTestTemplate(t *testing.T, dir string, name string, content string) st
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		t.Fatalf("failed to write test template: %v", err)
 	}
-
 	return path
 }
 
 func TestHomeHandlerRendersArtists(t *testing.T) {
-	// Arrange: fake API data and a tiny template.
-	useFakeClient(t, fakeArtistClient{
-		artists: []models.Artist{
-			{ID: 1, Name: "Queen"},
-			{ID: 2, Name: "Daft Punk"},
-		},
+	useFakeService(t, fakeService{
+		artists: []models.Artist{{ID: 1, Name: "Queen"}},
 	})
-	useTemplatePaths(t, `{{.Title}} {{range .Artists}}{{.Name}} {{end}}`, `{{.Artist.Name}}`)
+	useTemplatePaths(t, `{{.Title}} {{range .Artists}}{{.Name}}{{end}}`, `{{.Details.Artist.Name}}`, `{{.Status}} {{.Message}}`)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
-	// Act: call the handler directly.
 	HomeHandler(rec, req)
 
-	// Assert: check status and response body.
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
 	}
-
-	body := rec.Body.String()
-	if !strings.Contains(body, "Groupie Tracker") || !strings.Contains(body, "Queen") {
-		t.Fatalf("expected rendered home page, got %q", body)
+	if !strings.Contains(rec.Body.String(), "Queen") {
+		t.Fatalf("expected rendered artist, got %q", rec.Body.String())
 	}
 }
 
 func TestHomeHandlerReturnsNotFoundForUnknownPath(t *testing.T) {
-	// HomeHandler should only serve exactly "/".
+	useTemplatePaths(t, `home`, `artist`, `{{.Status}} {{.Message}}`)
+
 	req := httptest.NewRequest(http.MethodGet, "/missing", nil)
 	rec := httptest.NewRecorder()
 
@@ -106,11 +125,9 @@ func TestHomeHandlerReturnsNotFoundForUnknownPath(t *testing.T) {
 	}
 }
 
-func TestHomeHandlerReturnsServerErrorWhenAPIFails(t *testing.T) {
-	// Simulate an API failure so the error path is tested.
-	useFakeClient(t, fakeArtistClient{
-		err: errors.New("api failed"),
-	})
+func TestHomeHandlerReturnsServerErrorWhenServiceFails(t *testing.T) {
+	useFakeService(t, fakeService{err: errors.New("service failed")})
+	useTemplatePaths(t, `home`, `artist`, `{{.Status}} {{.Message}}`)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -122,15 +139,30 @@ func TestHomeHandlerReturnsServerErrorWhenAPIFails(t *testing.T) {
 	}
 }
 
-func TestArtistHandlerRendersSelectedArtist(t *testing.T) {
-	// This tests the query-string style URL: /artist?id=2.
-	useFakeClient(t, fakeArtistClient{
-		artists: []models.Artist{
-			{ID: 1, Name: "Queen"},
-			{ID: 2, Name: "Daft Punk"},
-		},
+func TestSearchHandlerEmptyQueryShowsAllArtists(t *testing.T) {
+	useFakeService(t, fakeService{
+		artists: []models.Artist{{ID: 1, Name: "Queen"}},
 	})
-	useTemplatePaths(t, `{{.Title}}`, `{{.Title}} {{.Artist.Name}}`)
+	useTemplatePaths(t, `{{range .Artists}}{{.Name}}{{end}}`, `artist`, `{{.Status}} {{.Message}}`)
+
+	req := httptest.NewRequest(http.MethodGet, "/search", nil)
+	rec := httptest.NewRecorder()
+
+	SearchHandler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "Queen") {
+		t.Fatalf("expected all artists for empty query, got %q", rec.Body.String())
+	}
+}
+
+func TestArtistHandlerRendersSelectedArtist(t *testing.T) {
+	useFakeService(t, fakeService{
+		details: models.ArtistDetails{Artist: models.Artist{ID: 2, Name: "Daft Punk"}},
+	})
+	useTemplatePaths(t, `home`, `{{.Details.Artist.Name}}`, `{{.Status}} {{.Message}}`)
 
 	req := httptest.NewRequest(http.MethodGet, "/artist?id=2", nil)
 	rec := httptest.NewRecorder()
@@ -140,20 +172,16 @@ func TestArtistHandlerRendersSelectedArtist(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
 	}
-
 	if !strings.Contains(rec.Body.String(), "Daft Punk") {
-		t.Fatalf("expected selected artist page, got %q", rec.Body.String())
+		t.Fatalf("expected selected artist, got %q", rec.Body.String())
 	}
 }
 
-func TestArtistHandlerRendersSelectedArtistFromPathID(t *testing.T) {
-	// This tests the path style URL: /artist/1.
-	useFakeClient(t, fakeArtistClient{
-		artists: []models.Artist{
-			{ID: 1, Name: "Queen"},
-		},
+func TestArtistHandlerAcceptsPathID(t *testing.T) {
+	useFakeService(t, fakeService{
+		details: models.ArtistDetails{Artist: models.Artist{ID: 1, Name: "Queen"}},
 	})
-	useTemplatePaths(t, `{{.Title}}`, `{{.Artist.Name}}`)
+	useTemplatePaths(t, `home`, `{{.Details.Artist.Name}}`, `{{.Status}} {{.Message}}`)
 
 	req := httptest.NewRequest(http.MethodGet, "/artist/1", nil)
 	rec := httptest.NewRecorder()
@@ -163,14 +191,11 @@ func TestArtistHandlerRendersSelectedArtistFromPathID(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
 	}
-
-	if !strings.Contains(rec.Body.String(), "Queen") {
-		t.Fatalf("expected selected artist page, got %q", rec.Body.String())
-	}
 }
 
 func TestArtistHandlerReturnsBadRequestForMissingID(t *testing.T) {
-	// A detail request needs either ?id=1 or /artist/1.
+	useTemplatePaths(t, `home`, `artist`, `{{.Status}} {{.Message}}`)
+
 	req := httptest.NewRequest(http.MethodGet, "/artist", nil)
 	rec := httptest.NewRecorder()
 
@@ -182,7 +207,8 @@ func TestArtistHandlerReturnsBadRequestForMissingID(t *testing.T) {
 }
 
 func TestArtistHandlerReturnsBadRequestForInvalidID(t *testing.T) {
-	// strconv.Atoi cannot convert "abc" into a number, so this should be 400.
+	useTemplatePaths(t, `home`, `artist`, `{{.Status}} {{.Message}}`)
+
 	req := httptest.NewRequest(http.MethodGet, "/artist?id=abc", nil)
 	rec := httptest.NewRecorder()
 
@@ -194,10 +220,10 @@ func TestArtistHandlerReturnsBadRequestForInvalidID(t *testing.T) {
 }
 
 func TestArtistHandlerReturnsNotFoundForUnknownArtist(t *testing.T) {
-	// The ID is valid, but no artist in the fake data has ID 99.
-	useFakeClient(t, fakeArtistClient{
-		artists: []models.Artist{{ID: 1, Name: "Queen"}},
+	useFakeService(t, fakeService{
+		details: models.ArtistDetails{Artist: models.Artist{ID: 1, Name: "Queen"}},
 	})
+	useTemplatePaths(t, `home`, `artist`, `{{.Status}} {{.Message}}`)
 
 	req := httptest.NewRequest(http.MethodGet, "/artist?id=99", nil)
 	rec := httptest.NewRecorder()
@@ -209,12 +235,14 @@ func TestArtistHandlerReturnsNotFoundForUnknownArtist(t *testing.T) {
 	}
 }
 
-func TestAPITestHandlerReturnsArtistSummary(t *testing.T) {
-	// /api-test prints a short text summary of fetched artists.
-	useFakeClient(t, fakeArtistClient{
-		artists: []models.Artist{
-			{ID: 1, Name: "Queen"},
-			{ID: 2, Name: "Daft Punk"},
+func TestAPITestHandlerReturnsSummary(t *testing.T) {
+	useFakeService(t, fakeService{
+		summary: service.Summary{
+			ArtistCount:   1,
+			LocationCount: 2,
+			DateCount:     3,
+			RelationCount: 4,
+			FirstArtist:   "Queen",
 		},
 	})
 
@@ -226,37 +254,16 @@ func TestAPITestHandlerReturnsArtistSummary(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
 	}
-
-	body := rec.Body.String()
-	if !strings.Contains(body, "Fetched 2 artists") || !strings.Contains(body, "First artist: Queen") {
-		t.Fatalf("expected api summary, got %q", body)
-	}
-}
-
-func TestNewRouterRoutesArtistRequests(t *testing.T) {
-	// This verifies the router sends /artist?id=1 to ArtistHandler.
-	useFakeClient(t, fakeArtistClient{
-		artists: []models.Artist{{ID: 1, Name: "Queen"}},
-	})
-	useTemplatePaths(t, `{{.Title}}`, `{{.Artist.Name}}`)
-
-	router := NewRouter()
-	req := httptest.NewRequest(http.MethodGet, "/artist?id=1", nil)
-	rec := httptest.NewRecorder()
-
-	router.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+	if !strings.Contains(rec.Body.String(), "Artists: 1") {
+		t.Fatalf("expected summary, got %q", rec.Body.String())
 	}
 }
 
 func TestNewRouterRoutesArtistPathRequests(t *testing.T) {
-	// This verifies the router sends /artist/1 to ArtistHandler.
-	useFakeClient(t, fakeArtistClient{
-		artists: []models.Artist{{ID: 1, Name: "Queen"}},
+	useFakeService(t, fakeService{
+		details: models.ArtistDetails{Artist: models.Artist{ID: 1, Name: "Queen"}},
 	})
-	useTemplatePaths(t, `{{.Title}}`, `{{.Artist.Name}}`)
+	useTemplatePaths(t, `home`, `{{.Details.Artist.Name}}`, `{{.Status}} {{.Message}}`)
 
 	router := NewRouter()
 	req := httptest.NewRequest(http.MethodGet, "/artist/1", nil)

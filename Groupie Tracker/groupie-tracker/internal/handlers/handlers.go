@@ -1,49 +1,44 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"groupie-tracker/internal/api"
 	"groupie-tracker/internal/models"
+	"groupie-tracker/internal/service"
 )
 
-type HomePageData struct {
-	Title   string
-	Artists []models.Artist
+// appService is the behavior handlers need from the service layer.
+// Tests can provide a fake implementation with these same methods.
+type appService interface {
+	AllArtists() ([]models.Artist, error)
+	FindArtistByID(id int) (models.ArtistDetails, error)
+	SearchArtists(query string) ([]models.Artist, error)
+	Summary() (service.Summary, error)
 }
 
-// ArtistPageData is the data shape sent to artist.html.
-// Title is used for the browser tab, and Artist is the selected artist to display.
-type ArtistPageData struct {
-	Title  string
-	Artist models.Artist
-}
+// app uses the real API client during normal server runs.
+var app appService = service.New(api.NewClient())
 
-// artistFetcher describes only the API method these handlers need.
-// This keeps handlers easy to test because tests can provide a fake version.
-type artistFetcher interface {
-	FetchArtists() ([]models.Artist, error)
-}
-
-// newAPIClient creates the real API client during normal app runs.
-// Tests replace this variable so they do not call the real internet API.
-var newAPIClient = func() artistFetcher {
-	return api.NewClient()
-}
-
-// Template paths live in variables so tests can point handlers at temporary templates.
+// Template paths live in variables so tests can point handlers at temporary files.
 var homeTemplatePath = "templates/index.html"
 var artistTemplatePath = "templates/artist.html"
+var errorTemplatePath = "templates/error.html"
 
 // NewRouter wires URL paths to handler functions.
 func NewRouter() http.Handler {
 	mux := http.NewServeMux()
 
-	// "/" shows the home page.
+	// Static files are served directly from the static folder.
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
 	mux.HandleFunc("/", HomeHandler)
+	mux.HandleFunc("/search", SearchHandler)
 
 	// Support both detail URL styles:
 	// /artist?id=1 and /artist/1
@@ -57,110 +52,140 @@ func NewRouter() http.Handler {
 }
 
 // renderTemplate loads an HTML template file and writes the rendered page.
-func renderTemplate(w http.ResponseWriter, filePath string, data any) {
+func renderTemplate(w http.ResponseWriter, filePath string, data any) error {
 	tmpl, err := template.ParseFiles(filePath)
 	if err != nil {
-		http.Error(w, "Failed to load template", http.StatusInternalServerError)
-		return
+		return err
 	}
 
-	err = tmpl.Execute(w, data)
-	if err != nil {
-		http.Error(w, "Failed to render page", http.StatusInternalServerError)
-		return
+	return tmpl.Execute(w, data)
+}
+
+func renderError(w http.ResponseWriter, status int, message string) {
+	w.WriteHeader(status)
+
+	data := models.ErrorPageData{
+		Title:   http.StatusText(status),
+		Status:  status,
+		Message: message,
+	}
+
+	if err := renderTemplate(w, errorTemplatePath, data); err != nil {
+		http.Error(w, message, status)
 	}
 }
 
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	// The "/" route can catch other paths too, so guard it manually.
 	if r.URL.Path != "/" {
-		http.NotFound(w, r)
+		renderError(w, http.StatusNotFound, "The page you requested does not exist.")
 		return
 	}
 
-	client := newAPIClient()
-
-	artists, err := client.FetchArtists()
+	artists, err := app.AllArtists()
 	if err != nil {
-		http.Error(w, "Failed to load artists", http.StatusInternalServerError)
+		renderError(w, http.StatusInternalServerError, "Failed to load artists. Please try again later.")
 		return
 	}
 
-	data := HomePageData{
+	data := models.HomePageData{
 		Title:   "Groupie Tracker",
 		Artists: artists,
 	}
 
-	renderTemplate(w, homeTemplatePath, data)
+	if err := renderTemplate(w, homeTemplatePath, data); err != nil {
+		renderError(w, http.StatusInternalServerError, "Failed to render the home page.")
+	}
+}
+
+func SearchHandler(w http.ResponseWriter, r *http.Request) {
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+
+	artists, err := app.SearchArtists(query)
+	if err != nil {
+		renderError(w, http.StatusInternalServerError, "Failed to search artists. Please try again later.")
+		return
+	}
+
+	data := models.HomePageData{
+		Title:   "Search - Groupie Tracker",
+		Query:   query,
+		Artists: artists,
+	}
+
+	if err := renderTemplate(w, homeTemplatePath, data); err != nil {
+		renderError(w, http.StatusInternalServerError, "Failed to render search results.")
+	}
 }
 
 func ArtistHandler(w http.ResponseWriter, r *http.Request) {
-	// First support links like /artist?id=1.
-	idText := r.URL.Query().Get("id")
-
-	// Also support links like /artist/1.
-	if idText == "" && len(r.URL.Path) > len("/artist/") {
-		idText = r.URL.Path[len("/artist/"):]
-	}
-
-	if idText == "" {
-		http.Error(w, "Missing artist id", http.StatusBadRequest)
+	id, ok := artistIDFromRequest(r)
+	if !ok {
+		renderError(w, http.StatusBadRequest, "Please choose an artist from the home page.")
 		return
 	}
 
-	id, err := strconv.Atoi(idText)
+	details, err := app.FindArtistByID(id)
+	if errors.Is(err, service.ErrArtistNotFound) {
+		renderError(w, http.StatusNotFound, "Artist not found.")
+		return
+	}
 	if err != nil {
-		http.Error(w, "Invalid artist id", http.StatusBadRequest)
+		renderError(w, http.StatusInternalServerError, "Failed to load artist details. Please try again later.")
 		return
 	}
 
-	client := newAPIClient()
-
-	artists, err := client.FetchArtists()
-	if err != nil {
-		http.Error(w, "Failed to load artists", http.StatusInternalServerError)
-		return
+	data := models.ArtistPageData{
+		Title:   details.Artist.Name,
+		Details: details,
 	}
 
-	var selectedArtist models.Artist
-	found := false
-
-	// Search through all artists until the requested ID is found.
-	for _, artist := range artists {
-		if artist.ID == id {
-			selectedArtist = artist
-			found = true
-			break
-		}
+	if err := renderTemplate(w, artistTemplatePath, data); err != nil {
+		renderError(w, http.StatusInternalServerError, "Failed to render the artist page.")
 	}
-
-	if !found {
-		http.Error(w, "Artist not found", http.StatusNotFound)
-		return
-	}
-
-	data := ArtistPageData{
-		Title:  selectedArtist.Name,
-		Artist: selectedArtist,
-	}
-
-	renderTemplate(w, artistTemplatePath, data)
 }
 
 func APITestHandler(w http.ResponseWriter, r *http.Request) {
-	client := newAPIClient()
-
-	artists, err := client.FetchArtists()
+	summary, err := app.Summary()
 	if err != nil {
-		http.Error(w, "Failed to fetch artists: "+err.Error(), http.StatusInternalServerError)
+		renderError(w, http.StatusInternalServerError, "Failed to fetch API summary.")
 		return
 	}
 
-	if len(artists) == 0 {
-		fmt.Fprintln(w, "No artists found")
-		return
+	fmt.Fprintf(w, "Artists: %d\n", summary.ArtistCount)
+	fmt.Fprintf(w, "Locations: %d\n", summary.LocationCount)
+	fmt.Fprintf(w, "Dates: %d\n", summary.DateCount)
+	fmt.Fprintf(w, "Relations: %d\n", summary.RelationCount)
+
+	if summary.FirstArtist != "" {
+		fmt.Fprintf(w, "\nFirst artist: %s\n", summary.FirstArtist)
+	}
+	if summary.FirstLocation != 0 {
+		fmt.Fprintf(w, "First location ID: %d\n", summary.FirstLocation)
+	}
+	if summary.FirstDate != 0 {
+		fmt.Fprintf(w, "First date ID: %d\n", summary.FirstDate)
+	}
+	if summary.FirstRelation != 0 {
+		fmt.Fprintf(w, "First relation ID: %d\n", summary.FirstRelation)
+	}
+}
+
+func artistIDFromRequest(r *http.Request) (int, bool) {
+	idText := r.URL.Query().Get("id")
+
+	if idText == "" && len(r.URL.Path) > len("/artist/") {
+		idText = strings.TrimPrefix(r.URL.Path, "/artist/")
 	}
 
-	fmt.Fprintf(w, "Fetched %d artists\n", len(artists))
-	fmt.Fprintf(w, "First artist: %s\n", artists[0].Name)
+	if idText == "" {
+		return 0, false
+	}
+
+	id, err := strconv.Atoi(idText)
+	if err != nil || id <= 0 {
+		return 0, false
+	}
+
+	return id, true
 }

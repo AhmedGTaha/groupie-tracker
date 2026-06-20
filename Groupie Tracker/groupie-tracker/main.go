@@ -8,9 +8,9 @@ import (
 )
 
 func main() {
-	log.Println("Server running at http://localhost:3000")
+	log.Println("Server running at http://localhost:8080")
 
-	err := http.ListenAndServe(":3000", handlers.NewRouter())
+	err := http.ListenAndServe(":8080", handlers.NewRouter())
 	if err != nil {
 		log.Fatal(err)
 	}

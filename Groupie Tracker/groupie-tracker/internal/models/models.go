@@ -9,6 +9,30 @@ type Artist struct {
 	FirstAlbum   string   `json:"firstAlbum"`
 }
 
+type ArtistDetails struct {
+	Artist         Artist
+	Locations      []string
+	Dates          []string
+	DatesLocations map[string][]string
+}
+
+type HomePageData struct {
+	Title   string
+	Query   string
+	Artists []Artist
+}
+
+type ArtistPageData struct {
+	Title   string
+	Details ArtistDetails
+}
+
+type ErrorPageData struct {
+	Title   string
+	Status  int
+	Message string
+}
+
 type LocationIndex struct {
 	Index []Location `json:"index"`
 }

@@ -1,98 +1,89 @@
 <!DOCTYPE html>
-<!-- This template renders one artist's detail page.
-	 handlers.ArtistHandler passes ArtistPageData into it. -->
+<!-- Go renders this template with models.ArtistPageData from handlers.go. -->
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<!-- The viewport tag helps the page size correctly on mobile screens. -->
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-	<!-- .Title comes from ArtistPageData.Title in handlers.go. -->
 	<title>{{.Title}}</title>
-
-	<style>
-		/* These styles keep the detail page readable while the app is still small.
-		   Later, they can move into static/css/style.css. */
-		body {
-			margin: 0;
-			font-family: Arial, sans-serif;
-			background-color: #f3f4f6;
-			color: #111827;
-		}
-
-		header {
-			background-color: #111827;
-			color: white;
-			padding: 24px;
-			text-align: center;
-		}
-
-		main {
-			width: 90%;
-			max-width: 900px;
-			margin: 30px auto;
-		}
-
-		.artist-details {
-			background-color: white;
-			border-radius: 14px;
-			padding: 24px;
-			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-		}
-
-		.artist-details img {
-			width: 100%;
-			max-width: 350px;
-			border-radius: 14px;
-			display: block;
-			margin-bottom: 20px;
-		}
-
-		.back-link {
-			display: inline-block;
-			margin-bottom: 20px;
-			color: #2563eb;
-			text-decoration: none;
-		}
-
-		.info {
-			color: #4b5563;
-		}
-	</style>
+	<link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-	<header>
-		<!-- .Artist.Name reads the Name field from the selected Artist struct. -->
-		<h1>{{.Artist.Name}}</h1>
+	<header class="site-header">
+		<a class="brand" href="/">Groupie Tracker</a>
+		<a class="nav-link" href="/">All artists</a>
 	</header>
 
-	<main>
-		<!-- This takes the user back to HomeHandler at "/". -->
+	<main class="page">
 		<a class="back-link" href="/">Back to home</a>
 
-		<section class="artist-details">
-			<!-- .Artist.Image is the image URL from the API response. -->
-			<img src="{{.Artist.Image}}" alt="{{.Artist.Name}} image">
+		<section class="detail-card">
+			<img class="detail-image" src="{{.Details.Artist.Image}}" alt="{{.Details.Artist.Name}} image">
+			<div class="detail-content">
+				<h1>{{.Details.Artist.Name}}</h1>
+				<p>Created in {{.Details.Artist.CreationDate}}</p>
+				<p>First album: {{.Details.Artist.FirstAlbum}}</p>
 
-			<h2>{{.Artist.Name}}</h2>
+				<h2>Members</h2>
+				<ul class="tag-list">
+					<!-- In this range, . is one member string. -->
+					{{range .Details.Artist.Members}}
+					<li>{{.}}</li>
+					{{end}}
+				</ul>
+			</div>
+		</section>
 
-			<p class="info">
-				Started: {{.Artist.CreationDate}}
-			</p>
-
-			<p class="info">
-				First album: {{.Artist.FirstAlbum}}
-			</p>
-
-			<h3>Members</h3>
-
-			<ul>
-				<!-- range loops over the Members slice.
-					 Inside this range, . is the current member name string. -->
-				{{range .Artist.Members}}
-				<li>{{.}}</li>
+		<section class="info-grid">
+			<div class="panel">
+				<h2>Locations</h2>
+				{{if .Details.Locations}}
+				<ul>
+					{{range .Details.Locations}}
+					<li>{{.}}</li>
+					{{end}}
+				</ul>
+				{{else}}
+				<p>No locations available.</p>
 				{{end}}
-			</ul>
+			</div>
+
+			<div class="panel">
+				<h2>Dates</h2>
+				{{if .Details.Dates}}
+				<ul>
+					{{range .Details.Dates}}
+					<li>{{.}}</li>
+					{{end}}
+				</ul>
+				{{else}}
+				<p>No dates available.</p>
+				{{end}}
+			</div>
+		</section>
+
+		<section class="panel">
+			<h2>Concert Relations</h2>
+			{{if .Details.DatesLocations}}
+			<table>
+				<thead>
+					<tr>
+						<th>Location</th>
+						<th>Dates</th>
+					</tr>
+				</thead>
+				<tbody>
+					<!-- The map key is a location, and the value is a slice of dates. -->
+					{{range $location, $dates := .Details.DatesLocations}}
+					<tr>
+						<td>{{$location}}</td>
+						<td>{{range $dates}}<span class="date-pill">{{.}}</span>{{end}}</td>
+					</tr>
+					{{end}}
+				</tbody>
+			</table>
+			{{else}}
+			<p>No relation data available.</p>
+			{{end}}
 		</section>
 	</main>
 </body>
