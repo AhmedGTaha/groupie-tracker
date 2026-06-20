@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<!-- This file is an HTML template.
+	 Go fills in values like {{.Title}} and {{.Artists}} before sending the page to the browser. -->
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<!-- This makes the page scale correctly on phones and tablets. -->
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<!-- .Title comes from the HomePageData struct in handlers.go. -->
+	<title>{{.Title}}</title>
+
+	<style>
+		/* These styles are inside the template for now.
+		   Later, you can move them into static/css/style.css. */
+		body {
+			margin: 0;
+			font-family: Arial, sans-serif;
+			background-color: #f3f4f6;
+			color: #111827;
+		}
+
+		header {
+			background-color: #111827;
+			color: white;
+			padding: 24px;
+			text-align: center;
+		}
+
+		main {
+			width: 90%;
+			max-width: 1200px;
+			margin: 30px auto;
+		}
+
+		.artist-grid {
+			/* CSS grid creates responsive columns for the artist cards. */
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+			gap: 20px;
+		}
+
+		.artist-card {
+			background-color: white;
+			border-radius: 14px;
+			padding: 16px;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+		}
+
+		.artist-card img {
+			width: 100%;
+			border-radius: 10px;
+		}
+
+		.artist-card h2 {
+			font-size: 20px;
+			margin-bottom: 8px;
+		}
+
+		.artist-info {
+			font-size: 14px;
+			color: #4b5563;
+		}
+
+		.members {
+			margin-top: 10px;
+			padding-left: 18px;
+		}
+	</style>
+</head>
+<body>
+	<header>
+		<!-- .Title prints the Title field from the data passed to tmpl.Execute. -->
+		<h1>{{.Title}}</h1>
+		<p>Browse artists and bands from the Groupie Tracker API</p>
+	</header>
+
+	<main>
+		<section class="artist-grid">
+			<!-- range loops over every artist inside .Artists.
+				 While inside this block, the dot . means "the current artist". -->
+			{{range .Artists}}
+			<article class="artist-card">
+				<img src="{{.Image}}" alt="{{.Name}} image">
+
+				<h2>{{.Name}}</h2>
+
+				<p class="artist-info">
+					Started: {{.CreationDate}}
+				</p>
+
+				<p class="artist-info">
+					First album: {{.FirstAlbum}}
+				</p>
+
+				<!-- This link sends the artist ID to ArtistHandler.
+					 The handler reads the ID from the query string: /artist?id=1. -->
+				<a href="/artist?id={{.ID}}">View details</a>
+			</article>
+			{{end}}
+		</section>
+	</main>
+</body>
+</html>
