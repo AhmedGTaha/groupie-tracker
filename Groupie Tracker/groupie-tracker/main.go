@@ -3,14 +3,21 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"groupie-tracker/internal/handlers"
 )
 
 func main() {
-	log.Println("Server running at http://localhost:8080")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
-	err := http.ListenAndServe(":8080", handlers.NewRouter())
+	addr := ":" + port
+	log.Printf("Server running at http://localhost:%s\n", port)
+
+	err := http.ListenAndServe(addr, handlers.NewRouter())
 	if err != nil {
 		log.Fatal(err)
 	}
