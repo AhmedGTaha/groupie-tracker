@@ -27,6 +27,10 @@ func main() {
 	// A mux is a router it decides which function should handle each route
 	mux := http.NewServeMux()
 
+	// This allows the server to serve files from the static folder
+	// Later we will use it for CSS, images, and maybe JavaScript
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
 	mux.HandleFunc("/", homeHandler)
 
 	log.Println("Server started at http://localhost:8080")
