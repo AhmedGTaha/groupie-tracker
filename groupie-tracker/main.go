@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"           // write text responses
+	"html/template" // load and render HTML templates
 	"log"           // print server messages
 	"net/http"      // tools to build the server
-	"html/template" // load and render HTML templates
 )
 
 // A handler is a function that runs when the browser visits a route
@@ -18,8 +18,26 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// This sends text back to the browser
-	fmt.Fprint(w, "Server is running")
+	// Go to template file -> Pars home.html as template
+	// It returns the template and any errors
+	tmpl, err := template.ParseFiles("templates/home.html")
+
+	// If home.html is missing or has a problem, the server should not crash
+	if err != nil {
+		log.Println("template parsing error:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// This sends the HTML page to the browser and nil = not passing data into the HTML
+	err = tmpl.Execute(w, nil)
+
+	if err != nil {
+		// If Go fails while sending the page, show a server error instead of crashing
+		log.Println("template execution error:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // It works the same way as homeHandler, but it is responsible for the /artists page
