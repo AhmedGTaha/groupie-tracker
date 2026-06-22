@@ -147,6 +147,7 @@ func artistDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
 func main() {
 	// mux = multiplexer
 	// A mux is a router it decides which function should handle each route
