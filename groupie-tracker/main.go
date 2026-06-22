@@ -128,7 +128,6 @@ func artistDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	// It returns the template and any errors
 	tmpl, err := template.ParseFiles("templates/artist-details.html")
 
-
 	// If artist-details.html is missing or has a problem, the server should not crash
 	if err != nil {
 		log.Println("template parsing error:", err)
