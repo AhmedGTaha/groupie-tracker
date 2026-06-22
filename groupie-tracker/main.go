@@ -60,19 +60,29 @@ func artistsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch artist data from the API package
-	artists, err := api.FetchArtists()
+	// Creates an empty slice of Artists
+	artists := []models.Artist{}
 
 	// This message will be sent to the HTML template
 	statusMessage := ""
+
+	fetchedArtists, err := api.FetchArtists()
 
 	if err != nil {
 		// If the API request fails, the page should still work
 		log.Println("API fetching error:", err)
 		statusMessage = "Could not load artist data right now."
 	} else {
-		// len(artists) tells us how many artists were decoded
+		// stores the fetched artists in the artists slice
+		artists = fetchedArtists
+		// message
 		statusMessage = fmt.Sprintf("Loaded %d artists from the API.", len(artists))
+	}
+
+	// One object to be displayed in the artists page
+	pageData := ArtistsPageData {
+		StatusMessage: statusMessage,
+		Artists: artists,
 	}
 
 	// Go to templates folder -> parse artists.html as a template
@@ -87,8 +97,8 @@ func artistsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// This sends the HTML page to the browser
-	// statusMessage is passed into the HTML template
-	err = tmpl.Execute(w, statusMessage)
+	// pageData is passed into the HTML template
+	err = tmpl.Execute(w, pageData)
 
 	if err != nil {
 		// If Go fails while sending the page, show a server error instead of crashing

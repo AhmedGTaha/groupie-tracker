@@ -12,9 +12,31 @@
 	</header>
 
 	<main>
-		<p>{{.}}</p>
+		<p>{{.StatusMessage}}</p>
 
-		<p>Artist cards will appear here later.</p>
+		{{if .Artists}}
+			<section>
+				{{range .Artists}}
+					<article>
+						<img src="{{.Image}}" alt="{{.Name}}" width="200">
+
+						<h2>{{.Name}}</h2>
+
+						<p>Created in: {{.CreationDate}}</p>
+						<p>First album: {{.FirstAlbum}}</p>
+
+						<h3>Members</h3>
+						<ul>
+							{{range .Members}}
+								<li>{{.}}</li>
+							{{end}}
+						</ul>
+					</article>
+				{{end}}
+			</section>
+		{{else}}
+			<p>No artists to display.</p>
+		{{end}}
 	</main>
 </body>
 </html>
