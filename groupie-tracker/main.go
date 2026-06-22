@@ -1,47 +1,19 @@
 package main
 
 import (
-	"fmt"           // format text and create custom error messages
+	"fmt"           // format text messages
 	"html/template" // load and render HTML templates
-	"io"            // read response body from the API
 	"log"           // print server messages
 	"net/http"      // tools to build the server
-	"time"          // set timeout for API requests
+
+	"groupie-tracker/api"    // functions for fetching API data
+	"groupie-tracker/models" // data structures used in the app
 )
 
-
-// API
-const artistsAPIURL = "https://groupietrackers.herokuapp.com/api/artists"
-
-// This function takes a URL and returns raw data from the API and any error
-// We use []byte because API responses arrive as raw bytes first
-func fetchAPIData (url string) ([]byte, error) {
-
-	// This creates an HTTP client with a timeout
-	client := http.Client {
-		Timeout: 10 * time.Second,
-	}
-
-	// This sends a GET request to the API (Give me data from this URL)
-	resp, err := client.Get(url)
-	if err != nil {
-		return nil, err
-	}
-
-	// This closes the response body after we finish reading it
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	// This reads the full API response
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	return body, nil
+// ArtistsPageData is the data we send to artists.html
+type ArtistsPageData struct {
+	StatusMessage string
+	Artists       []models.Artist
 }
 
 // A handler is a function that runs when the browser visits a route
@@ -55,7 +27,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Go to template file -> Pars home.html as template
+	// Go to templates folder -> parse home.html as a template
 	// It returns the template and any errors
 	tmpl, err := template.ParseFiles("templates/home.html")
 
@@ -88,8 +60,8 @@ func artistsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch raw artist data from the API
-	body, err := fetchAPIData(artistsAPIURL)
+	// Fetch artist data from the API package
+	artists, err := api.FetchArtists()
 
 	// This message will be sent to the HTML template
 	statusMessage := ""
@@ -99,8 +71,8 @@ func artistsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("API fetching error:", err)
 		statusMessage = "Could not load artist data right now."
 	} else {
-		// len(body) tells us how many bytes we received from the API
-		statusMessage = fmt.Sprintf("Connected to artists API. Received %d bytes.", len(body))
+		// len(artists) tells us how many artists were decoded
+		statusMessage = fmt.Sprintf("Loaded %d artists from the API.", len(artists))
 	}
 
 	// Go to templates folder -> parse artists.html as a template
@@ -135,8 +107,8 @@ func main() {
 	// This registers a new route. Any URL that starts with "/static/"
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-	mux.HandleFunc("/", homeHandler)
 	mux.HandleFunc("/artists", artistsHandler)
+	mux.HandleFunc("/", homeHandler)
 
 	log.Println("Server started at http://localhost:8080")
 
