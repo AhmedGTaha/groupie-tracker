@@ -13,22 +13,29 @@ import (
 // API
 const artistsAPIURL = "https://groupietrackers.herokuapp.com/api/artists"
 
+// This function takes a URL and returns raw data from the API and any error
+// We use []byte because API responses arrive as raw bytes first
 func fetchAPIData (url string) ([]byte, error) {
+
+	// This creates an HTTP client with a timeout
 	client := http.Client {
 		Timeout: 10 * time.Second,
 	}
 
+	// This sends a GET request to the API (Give me data from this URL)
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
 	}
 
+	// This closes the response body after we finish reading it
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
+	// This reads the full API response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -81,6 +88,21 @@ func artistsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Fetch raw artist data from the API
+	body, err := fetchAPIData(artistsAPIURL)
+
+	// This message will be sent to the HTML template
+	statusMessage := ""
+
+	if err != nil {
+		// If the API request fails, the page should still work
+		log.Println("API fetching error:", err)
+		statusMessage = "Could not load artist data right now."
+	} else {
+		// len(body) tells us how many bytes we received from the API
+		statusMessage = fmt.Sprintf("Connected to artists API. Received %d bytes.", len(body))
+	}
+
 	// Go to templates folder -> parse artists.html as a template
 	// It returns the template and any errors
 	tmpl, err := template.ParseFiles("templates/artists.html")
@@ -92,8 +114,9 @@ func artistsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// This sends the HTML page to the browser and nil = not passing data into the HTML
-	err = tmpl.Execute(w, nil)
+	// This sends the HTML page to the browser
+	// statusMessage is passed into the HTML template
+	err = tmpl.Execute(w, statusMessage)
 
 	if err != nil {
 		// If Go fails while sending the page, show a server error instead of crashing
