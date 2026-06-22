@@ -1,10 +1,41 @@
 package main
 
 import (
+	"fmt"           // format text and create custom error messages
 	"html/template" // load and render HTML templates
+	"io"            // read response body from the API
 	"log"           // print server messages
 	"net/http"      // tools to build the server
+	"time"          // set timeout for API requests
 )
+
+
+// API
+const artistsAPIURL = "https://groupietrackers.herokuapp.com/api/artists"
+
+func fetchAPIData (url string) ([]byte, error) {
+	client := http.Client {
+		Timeout: 10 * time.Second,
+	}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
+}
 
 // A handler is a function that runs when the browser visits a route
 func homeHandler(w http.ResponseWriter, r *http.Request) {
