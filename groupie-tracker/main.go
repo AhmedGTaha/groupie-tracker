@@ -108,6 +108,45 @@ func artistsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// artistDetailsHandler is responsible for the /artist details page
+func artistDetailsHandler(w http.ResponseWriter, r *http.Request) {
+	// This checks if the user visited a wrong path
+	if r.URL.Path != "/artist" {
+		http.NotFound(w, r)
+		return
+	}
+
+	artistID := r.URL.Query().Get("id")
+
+	// If the id is missing, return a bad request error
+	if artistID == "" {
+		http.Error(w, "Missing artist id", http.StatusBadRequest)
+		return
+	}
+
+	// Go to templates folder -> parse artist-details.html as a template
+	// It returns the template and any errors
+	tmpl, err := template.ParseFiles("templates/artist-details.html")
+
+
+	// If artist-details.html is missing or has a problem, the server should not crash
+	if err != nil {
+		log.Println("template parsing error:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// This sends the HTML page to the browser
+	// artistID is passed into the HTML template
+	err = tmpl.Execute(w, artistID)
+
+	if err != nil {
+		// If Go fails while sending the page, show a server error instead of crashing
+		log.Println("template execution error:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+}
 func main() {
 	// mux = multiplexer
 	// A mux is a router it decides which function should handle each route
@@ -117,6 +156,7 @@ func main() {
 	// This registers a new route. Any URL that starts with "/static/"
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
+	mux.HandleFunc("/artist", artistDetailsHandler)
 	mux.HandleFunc("/artists", artistsHandler)
 	mux.HandleFunc("/", homeHandler)
 

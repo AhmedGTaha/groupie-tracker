@@ -19,9 +19,9 @@
 				{{range .Artists}}
 					<article>
 						<img src="{{.Image}}" alt="{{.Name}}" width="200">
-
-						<h2>{{.Name}}</h2>
-
+						<h2>
+							<a href="/artist?id={{.ID}}">{{.Name}}</a>
+						</h2>
 						<p>Created in: {{.CreationDate}}</p>
 						<p>First album: {{.FirstAlbum}}</p>
 
