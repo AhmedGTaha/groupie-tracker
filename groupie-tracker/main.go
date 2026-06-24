@@ -8,6 +8,7 @@ import (
 	"log"           // print server messages
 	"net/http"      // tools to build the server
 	"strconv"
+	"strings"
 
 	"groupie-tracker/api"    // functions for fetching API data
 	"groupie-tracker/models" // data structures used in the app
@@ -15,8 +16,9 @@ import (
 
 // ArtistsPageData is the data we send to artists.html
 type ArtistsPageData struct {
-	StatusMessage string
-	Artists       []models.Artist
+    StatusMessage string
+    Artists       []models.Artist
+    Query         string // the search term, e.g. "queen"
 }
 
 // ArtistDetailsPageData sends data to templates/artist-details.html
@@ -90,10 +92,25 @@ func artistsHandler(w http.ResponseWriter, r *http.Request) {
 		statusMessage = fmt.Sprintf("Loaded %d artists from the API.", len(artists))
 	}
 
+    // Read the search query from the URL (like: /artists?q=queen)
+	query := r.URL.Query().Get("q")
+
+	if query != "" {
+		var filtered [] models.Artist
+		for _, loopArtist := range artists {
+			if containsIgnoreCase(loopArtist.Name, query) {
+				filtered = append(filtered, loopArtist)
+			}
+		}
+		artists = filtered
+		statusMessage = fmt.Sprintf("Found %d artist(s) for '%s'.", len(artists), query)
+	}
+
 	// One object to be displayed in the artists page
 	pageData := ArtistsPageData{
-		StatusMessage: statusMessage,
-		Artists:       artists,
+        StatusMessage: statusMessage,
+        Artists:       artists,
+        Query:         query,
 	}
 
 	// Go to templates folder -> parse artists.html as a template
@@ -220,6 +237,13 @@ func artistDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+}
+
+// containsIgnoreCase checks if substr is inside s, ignoring case.
+func containsIgnoreCase(s, substr string) bool {
+    s = strings.ToLower(s)
+    substr = strings.ToLower(substr)
+    return strings.Contains(s, substr)
 }
 
 func main() {
