@@ -19,9 +19,12 @@ type ArtistsPageData struct {
 	Artists       []models.Artist
 }
 
-// ArtistDetailsPageData is the data we send to artist-details.html
+// ArtistDetailsPageData sends data to templates/artist-details.html
 type ArtistDetailsPageData struct {
-	Artist models.Artist
+    Artist   models.Artist
+    Location models.Location
+    Date     models.Date
+    Relation models.Relation
 }
 
 // A handler is a function that runs when the browser visits a route
@@ -153,6 +156,42 @@ func artistDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Fetch all locations and find the one related to an artist id
+	var location models.Location
+	locations, err := api.FetchLocations()
+	if err == nil {
+		for _, loc := range locations {
+			if loc.ID == selectedArtist.ID {
+				location = loc
+				break
+			}
+		}
+	}
+
+	    // Fetch all dates and find the one matching this artist
+    var date models.Date
+    dates, err := api.FetchDates()
+    if err == nil {
+        for _, d := range dates {
+            if d.ID == selectedArtist.ID {
+                date = d
+                break
+            }
+        }
+    }
+
+	    // Fetch all relations and find the one matching this artist
+    var relation models.Relation
+    relations, err := api.FetchRelations()
+    if err == nil {
+        for _, rel := range relations {
+            if rel.ID == selectedArtist.ID {
+                relation = rel
+                break
+            }
+        }
+    }
+
 	// Go to templates folder -> parse artist-details.html as a template
 	// It returns the template and any errors
 	tmpl, err := template.ParseFiles("templates/artist-details.html")
@@ -166,7 +205,10 @@ func artistDetailsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Create the data that will be sent to the template
 	pageData := ArtistDetailsPageData{
-		Artist: selectedArtist,
+		Artist:   selectedArtist,
+		Location: location,
+		Date: date,
+		Relation: relation,
 	}
 
 	// This sends the HTML page to the browser

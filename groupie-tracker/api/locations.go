@@ -28,14 +28,11 @@ func FetchLocations() ([]models.Location, error) {
 }
 
 func decodeLocations(data []byte) ([]models.Location, error) {
-	var response struct {
-		index []models.Location
-	}
-
-	err :=json.Unmarshal(data, &response)
-		if err != nil {
-		return nil, err
-	}
-
-	return response.index, nil
+    var response struct {
+        Index []models.Location `json:"index"`
+    }
+    if err := json.Unmarshal(data, &response); err != nil {
+        return nil, err
+    }
+    return response.Index, nil
 }

@@ -11,20 +11,50 @@
 		<a href="/artists">Back to artists</a>
 	</header>
 
-	<main>
-		<img src="{{.Artist.Image}}" alt="{{.Artist.Name}}" width="300">
+    <main>
+        <img src="{{.Artist.Image}}" alt="{{.Artist.Name}}" width="300">
 
-		<p><strong>Creation Date:</strong> {{.Artist.CreationDate}}</p>
+        <p><strong>Creation Date:</strong> {{.Artist.CreationDate}}</p>
+        <p><strong>First Album:</strong> {{.Artist.FirstAlbum}}</p>
 
-		<p><strong>First Album:</strong> {{.Artist.FirstAlbum}}</p>
+        <h2>Members</h2>
+        <ul>
+            {{range .Artist.Members}}
+                <li>{{.}}</li>
+            {{end}}
+        </ul>
 
-		<h2>Members</h2>
+        {{if .Location.Locations}}
+        <h2>Concert Locations</h2>
+        <ul>
+            {{range .Location.Locations}}
+            <li>{{.}}</li>
+            {{end}}
+        </ul>
+        {{end}}
 
-		<ul>
-			{{range .Artist.Members}}
-				<li>{{.}}</li>
-			{{end}}
-		</ul>
-	</main>
+        {{if .Date.Dates}}
+        <h2>Concert Dates</h2>
+        <ul>
+            {{range .Date.Dates}}
+            <li>{{.}}</li>
+            {{end}}
+        </ul>
+        {{end}}
+
+        {{if .Relation.DatesLocations}}
+        <h2>Concerts (Dates & Locations)</h2>
+        <ul>
+            {{range $location, $dates := .Relation.DatesLocations}}
+            <li>
+                <strong>{{$location}}</strong>:
+                {{range $dates}}
+                {{.}}
+                {{end}}
+            </li>
+            {{end}}
+        </ul>
+        {{end}}
+    </main>
 </body>
 </html>
