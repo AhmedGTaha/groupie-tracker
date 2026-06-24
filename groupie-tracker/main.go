@@ -7,6 +7,7 @@ import (
 	"html/template" // load and render HTML templates
 	"log"           // print server messages
 	"net/http"      // tools to build the server
+	"strconv"
 
 	"groupie-tracker/api"    // functions for fetching API data
 	"groupie-tracker/models" // data structures used in the app
@@ -123,6 +124,8 @@ func artistDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Read the artist ID from the URL
+	// Example: /artist?id=1
 	artistID := r.URL.Query().Get("id")
 
 	// If the id is missing, return a bad request error
@@ -131,27 +134,21 @@ func artistDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	artists, err := api.FetchArtists()
+	// Convert the URL id from string to int
+	id, err := strconv.Atoi(artistID)
 
+	// If conversion fails, the id is invalid
 	if err != nil {
-		log.Println("API fetching error:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, "Invalid artist id", http.StatusBadRequest)
 		return
 	}
 
-	var selectedArtist models.Artist
+	// Fetch the artist with the matching ID
+	selectedArtist, err := api.GetArtistByID(id)
 
-	isFound := false
-
-	for _, artist := range artists {
-		if fmt.Sprintf("%d", artist.ID) == artistID {
-			selectedArtist = artist
-			isFound = true
-			break
-		}
-	}
-
-	if !isFound {
+	// If the artist does not exist, return 404
+	if err != nil {
+		log.Println("artist lookup error:", err)
 		http.NotFound(w, r)
 		return
 	}
@@ -167,11 +164,12 @@ func artistDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Create the data that will be sent to the template
 	pageData := ArtistDetailsPageData{
 		Artist: selectedArtist,
 	}
+
 	// This sends the HTML page to the browser
-	// artistID is passed into the HTML template
 	err = tmpl.Execute(w, pageData)
 
 	if err != nil {

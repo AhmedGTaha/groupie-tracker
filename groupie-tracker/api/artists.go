@@ -30,6 +30,32 @@ func FetchArtists() ([]models.Artist, error) {
 	return artists, nil
 }
 
+// GetArtistByID finds and returns one artist using its ID
+func GetArtistByID(id int) (models.Artist, error) {
+
+	// Fetch all artists from the API
+	artists, err := FetchArtists()
+
+	// If FetchArtists failed, return the error immediately
+	if err != nil {
+		return models.Artist{}, err
+	}
+
+	// Loop through every artist in the slice
+	for _, artist := range artists {
+
+		// Check if this artist's ID matches the requested ID
+		if artist.ID == id {
+
+			// Artist found, return it and no error
+			return artist, nil
+		}
+	}
+
+	// If we reach this point, no artist matched the ID
+	return models.Artist{}, fmt.Errorf("artist not found")
+}
+
 // fetchAPIData sends a request to an API URL and returns the response body
 func fetchAPIData(url string) ([]byte, error) {
 	// Create a client with timeout so the server does not hang forever
