@@ -7,14 +7,29 @@
 	<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-	<header>
-		<h1>Groupie Tracker</h1>
+	<header class="site-header">
+		<nav class="navbar" aria-label="Main navigation">
+			<a class="brand" href="/">Groupie Tracker</a>
+			<div class="nav-links">
+				<a class="active" href="/">Home</a>
+				<a href="/artists">Artists</a>
+			</div>
+		</nav>
 	</header>
 
-	<main>
-		<p>Explore bands and artists using the Groupie Tracker API.</p>
-
-		<a href="/artists">View artists</a>
+	<main class="page-shell">
+		<section class="hero">
+			<div class="hero-content">
+				<p class="eyebrow">Music discovery</p>
+				<h1>Explore bands, artists, tours, and albums.</h1>
+				<p class="hero-copy">Browse artist profiles powered by the Groupie Tracker API, including members, first albums, concert dates, and locations.</p>
+				<a class="button-primary" href="/artists">View artists</a>
+			</div>
+		</section>
 	</main>
+
+	<footer class="site-footer">
+		<p>Data from Groupie Tracker API.</p>
+	</footer>
 </body>
 </html>

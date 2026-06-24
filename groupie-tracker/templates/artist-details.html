@@ -7,55 +7,86 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-	<header>
-		<h1>{{.Artist.Name}}</h1>
-		<a href="/artists">Back to artists</a>
+	<header class="site-header">
+		<nav class="navbar" aria-label="Main navigation">
+			<a class="brand" href="/">Groupie Tracker</a>
+			<div class="nav-links">
+				<a href="/">Home</a>
+				<a class="active" href="/artists">Artists</a>
+			</div>
+		</nav>
 	</header>
 
-    <main>
-        <img src="{{.Artist.Image}}" alt="{{.Artist.Name}}" width="300">
+    <main class="page-shell">
+        <section class="detail-hero">
+            <div class="detail-image-wrap">
+                <img src="{{.Artist.Image}}" alt="{{.Artist.Name}}">
+            </div>
+            <div class="detail-summary">
+                <a class="back-link" href="/artists">Back to artists</a>
+                <p class="eyebrow">Artist profile</p>
+                <h1>{{.Artist.Name}}</h1>
+                <div class="info-pills">
+                    <p><span>Creation Date</span>{{.Artist.CreationDate}}</p>
+                    <p><span>First Album</span>{{.Artist.FirstAlbum}}</p>
+                </div>
+            </div>
+        </section>
 
-        <p><strong>Creation Date:</strong> {{.Artist.CreationDate}}</p>
-        <p><strong>First Album:</strong> {{.Artist.FirstAlbum}}</p>
+        <div class="details-layout">
+            <section class="detail-section">
+                <h2>Members</h2>
+                <ul class="member-list">
+                    {{range .Artist.Members}}
+                        <li>{{.}}</li>
+                    {{end}}
+                </ul>
+            </section>
 
-        <h2>Members</h2>
-        <ul>
-            {{range .Artist.Members}}
-                <li>{{.}}</li>
+            {{if .Location.Locations}}
+            <section class="detail-section">
+                <h2>Concert Locations</h2>
+                <ul class="stack-list">
+                    {{range .Location.Locations}}
+                    <li>{{.}}</li>
+                    {{end}}
+                </ul>
+            </section>
             {{end}}
-        </ul>
 
-        {{if .Location.Locations}}
-        <h2>Concert Locations</h2>
-        <ul>
-            {{range .Location.Locations}}
-            <li>{{.}}</li>
+            {{if .Date.Dates}}
+            <section class="detail-section">
+                <h2>Concert Dates</h2>
+                <ul class="stack-list">
+                    {{range .Date.Dates}}
+                    <li>{{.}}</li>
+                    {{end}}
+                </ul>
+            </section>
             {{end}}
-        </ul>
-        {{end}}
 
-        {{if .Date.Dates}}
-        <h2>Concert Dates</h2>
-        <ul>
-            {{range .Date.Dates}}
-            <li>{{.}}</li>
+            {{if .Relation.DatesLocations}}
+            <section class="detail-section relations-section">
+                <h2>Concerts</h2>
+                <ul class="relation-list">
+                    {{range $location, $dates := .Relation.DatesLocations}}
+                    <li>
+                        <strong>{{$location}}</strong>
+                        <span>
+                            {{range $dates}}
+                            {{.}}
+                            {{end}}
+                        </span>
+                    </li>
+                    {{end}}
+                </ul>
+            </section>
             {{end}}
-        </ul>
-        {{end}}
-
-        {{if .Relation.DatesLocations}}
-        <h2>Concerts (Dates & Locations)</h2>
-        <ul>
-            {{range $location, $dates := .Relation.DatesLocations}}
-            <li>
-                <strong>{{$location}}</strong>:
-                {{range $dates}}
-                {{.}}
-                {{end}}
-            </li>
-            {{end}}
-        </ul>
-        {{end}}
+        </div>
     </main>
+
+    <footer class="site-footer">
+        <p>Data from Groupie Tracker API.</p>
+    </footer>
 </body>
 </html>

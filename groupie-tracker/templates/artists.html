@@ -7,34 +7,52 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <header>
-        <h1>Artists</h1>
-        <a href="/">Back to home</a>
+    <header class="site-header">
+        <nav class="navbar" aria-label="Main navigation">
+            <a class="brand" href="/">Groupie Tracker</a>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a class="active" href="/artists">Artists</a>
+            </div>
+        </nav>
     </header>
 
-    <main>
-        <!-- Search form -->
-        <form action="/artists" method="GET">
-            <input type="text" name="q" placeholder="Search by name..." value="{{.Query}}">
-            <button type="submit">Search</button>
-        </form>
+    <main class="page-shell">
+        <section class="page-heading">
+            <p class="eyebrow">Artist directory</p>
+            <h1>Artists</h1>
+        </section>
 
-        <p>{{.StatusMessage}}</p>
+        <section class="toolbar" aria-label="Artist search">
+            <!-- Search form -->
+            <form class="search-form" action="/artists" method="GET">
+                <input type="text" name="q" placeholder="Search by name..." value="{{.Query}}">
+                <button type="submit">Search</button>
+            </form>
+
+            <p class="status-message">{{.StatusMessage}}</p>
+        </section>
 
         {{if .Artists}}
             <div class="artist-grid">
                 {{range .Artists}}
                     <article class="artist-card">
-                        <img src="{{.Image}}" alt="{{.Name}}">
-                        <h2><a href="/artist?id={{.ID}}">{{.Name}}</a></h2>
-                        <p>Created in: {{.CreationDate}}</p>
-                        <p>First album: {{.FirstAlbum}}</p>
-                        <h3>Members</h3>
-                        <ul>
-                            {{range .Members}}
-                            <li>{{.}}</li>
-                            {{end}}
-                        </ul>
+                        <a class="card-image-link" href="/artist?id={{.ID}}" aria-label="View {{.Name}}">
+                            <img src="{{.Image}}" alt="{{.Name}}">
+                        </a>
+                        <div class="card-body">
+                            <h2><a href="/artist?id={{.ID}}">{{.Name}}</a></h2>
+                            <div class="meta-grid">
+                                <p><span>Created</span>{{.CreationDate}}</p>
+                                <p><span>First album</span>{{.FirstAlbum}}</p>
+                            </div>
+                            <h3>Members</h3>
+                            <ul class="member-list compact">
+                                {{range .Members}}
+                                <li>{{.}}</li>
+                                {{end}}
+                            </ul>
+                        </div>
                     </article>
                 {{end}}
             </div>
@@ -42,5 +60,9 @@
             <p class="no-artists">No artists to display.</p>
         {{end}}
     </main>
+
+    <footer class="site-footer">
+        <p>Data from Groupie Tracker API.</p>
+    </footer>
 </body>
 </html>
