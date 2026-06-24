@@ -175,17 +175,19 @@ func artistDetailsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch all locations and find the one related to an artist id
 	var location models.Location
-	locations, err := api.FetchLocations()
-	if err == nil {
-		for _, loc := range locations {
-			if loc.ID == selectedArtist.ID {
-				location = loc
-				break
-			}
-		}
-	}
+    locations, err := api.FetchLocations()
+    if err == nil {
+        for _, loc := range locations {
+            if loc.ID == selectedArtist.ID {
+                location = loc
+                break
+            }
+        }
+    } else {
+        log.Println("FetchLocations error:", err)
+    }
 
-	    // Fetch all dates and find the one matching this artist
+	// Fetch all dates and find the one matching this artist
     var date models.Date
     dates, err := api.FetchDates()
     if err == nil {
@@ -195,6 +197,8 @@ func artistDetailsHandler(w http.ResponseWriter, r *http.Request) {
                 break
             }
         }
+    } else {
+        log.Println("FetchDates error:", err)
     }
 
 	    // Fetch all relations and find the one matching this artist
@@ -207,6 +211,8 @@ func artistDetailsHandler(w http.ResponseWriter, r *http.Request) {
                 break
             }
         }
+    } else {
+        log.Println("FetchRelations error:", err)
     }
 
 	// Go to templates folder -> parse artist-details.html as a template

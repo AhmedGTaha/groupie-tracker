@@ -11,7 +11,7 @@ import (
 )
 
 // API endpoint for artists data
-const artistsAPIURL = "https://groupietrackers.herokuapp.com/api/artists"
+var artistsAPIURL = "https://groupietrackers.herokuapp.com/api/artists"
 
 // FetchArtists gets artist data from the API and returns it as Go structs
 func FetchArtists() ([]models.Artist, error) {

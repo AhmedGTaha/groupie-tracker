@@ -1,42 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Artists - Groupie Tracker</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artists - Groupie Tracker</title>
 </head>
 <body>
-	<header>
-		<h1>Artists</h1>
-		<a href="/">Back to home</a>
-	</header>
+    <header>
+        <h1>Artists</h1>
+        <a href="/">Back to home</a>
+    </header>
 
-	<main>
-		<p>{{.StatusMessage}}</p>
+    <main>
+        <!-- Search form: sends GET request to /artists with ?q=... -->
+        <form action="/artists" method="GET">
+            <input type="text" name="q" placeholder="Search by name..." value="{{.Query}}">
+            <button type="submit">Search</button>
+        </form>
 
-		{{if .Artists}}
-			<section>
-				{{range .Artists}}
-					<article>
-						<img src="{{.Image}}" alt="{{.Name}}" width="200">
-						<h2>
-							<a href="/artist?id={{.ID}}">{{.Name}}</a>
-						</h2>
-						<p>Created in: {{.CreationDate}}</p>
-						<p>First album: {{.FirstAlbum}}</p>
+        <p>{{.StatusMessage}}</p>
 
-						<h3>Members</h3>
-						<ul>
-							{{range .Members}}
-								<li>{{.}}</li>
-							{{end}}
-						</ul>
-					</article>
-				{{end}}
-			</section>
-		{{else}}
-			<p>No artists to display.</p>
-		{{end}}
-	</main>
+        {{if .Artists}}
+            <section>
+                {{range .Artists}}
+                    <article>
+                        <img src="{{.Image}}" alt="{{.Name}}" width="200">
+                        <h2>
+                            <a href="/artist?id={{.ID}}">{{.Name}}</a>
+                        </h2>
+                        <p>Created in: {{.CreationDate}}</p>
+                        <p>First album: {{.FirstAlbum}}</p>
+
+                        <h3>Members</h3>
+                        <ul>
+                            {{range .Members}}
+                                <li>{{.}}</li>
+                            {{end}}
+                        </ul>
+                    </article>
+                {{end}}
+            </section>
+        {{else}}
+            <p>No artists to display.</p>
+        {{end}}
+    </main>
 </body>
 </html>
