@@ -3,16 +3,28 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Artist Details - Groupie Tracker</title>
+	<title>{{.Artist.Name}} - Groupie Tracker</title>
 </head>
 <body>
 	<header>
-		<h1>Artist Details</h1>
+		<h1>{{.Artist.Name}}</h1>
 		<a href="/artists">Back to artists</a>
 	</header>
 
 	<main>
-		<p>Artist ID: {{.}}</p>
+		<img src="{{.Artist.Image}}" alt="{{.Artist.Name}}" width="300">
+
+		<p><strong>Creation Date:</strong> {{.Artist.CreationDate}}</p>
+
+		<p><strong>First Album:</strong> {{.Artist.FirstAlbum}}</p>
+
+		<h2>Members</h2>
+
+		<ul>
+			{{range .Artist.Members}}
+				<li>{{.}}</li>
+			{{end}}
+		</ul>
 	</main>
 </body>
 </html>

@@ -18,6 +18,11 @@ type ArtistsPageData struct {
 	Artists       []models.Artist
 }
 
+// ArtistDetailsPageData is the data we send to artist-details.html
+type ArtistDetailsPageData struct {
+	Artist models.Artist
+}
+
 // A handler is a function that runs when the browser visits a route
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	// w http.ResponseWriter is used to send a response back to the browser
@@ -82,9 +87,9 @@ func artistsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// One object to be displayed in the artists page
-	pageData := ArtistsPageData {
+	pageData := ArtistsPageData{
 		StatusMessage: statusMessage,
-		Artists: artists,
+		Artists:       artists,
 	}
 
 	// Go to templates folder -> parse artists.html as a template
@@ -126,6 +131,31 @@ func artistDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	artists, err := api.FetchArtists()
+
+	if err != nil {
+		log.Println("API fetching error:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	var selectedArtist models.Artist
+
+	isFound := false
+
+	for _, artist := range artists {
+		if fmt.Sprintf("%d", artist.ID) == artistID {
+			selectedArtist = artist
+			isFound = true
+			break
+		}
+	}
+
+	if !isFound {
+		http.NotFound(w, r)
+		return
+	}
+
 	// Go to templates folder -> parse artist-details.html as a template
 	// It returns the template and any errors
 	tmpl, err := template.ParseFiles("templates/artist-details.html")
@@ -137,9 +167,12 @@ func artistDetailsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pageData := ArtistDetailsPageData{
+		Artist: selectedArtist,
+	}
 	// This sends the HTML page to the browser
 	// artistID is passed into the HTML template
-	err = tmpl.Execute(w, artistID)
+	err = tmpl.Execute(w, pageData)
 
 	if err != nil {
 		// If Go fails while sending the page, show a server error instead of crashing
