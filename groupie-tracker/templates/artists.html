@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Artists - Groupie Tracker</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <header>
@@ -12,7 +13,7 @@
     </header>
 
     <main>
-        <!-- Search form: sends GET request to /artists with ?q=... -->
+        <!-- Search form -->
         <form action="/artists" method="GET">
             <input type="text" name="q" placeholder="Search by name..." value="{{.Query}}">
             <button type="submit">Search</button>
@@ -21,27 +22,24 @@
         <p>{{.StatusMessage}}</p>
 
         {{if .Artists}}
-            <section>
+            <div class="artist-grid">
                 {{range .Artists}}
-                    <article>
-                        <img src="{{.Image}}" alt="{{.Name}}" width="200">
-                        <h2>
-                            <a href="/artist?id={{.ID}}">{{.Name}}</a>
-                        </h2>
+                    <article class="artist-card">
+                        <img src="{{.Image}}" alt="{{.Name}}">
+                        <h2><a href="/artist?id={{.ID}}">{{.Name}}</a></h2>
                         <p>Created in: {{.CreationDate}}</p>
                         <p>First album: {{.FirstAlbum}}</p>
-
                         <h3>Members</h3>
                         <ul>
                             {{range .Members}}
-                                <li>{{.}}</li>
+                            <li>{{.}}</li>
                             {{end}}
                         </ul>
                     </article>
                 {{end}}
-            </section>
+            </div>
         {{else}}
-            <p>No artists to display.</p>
+            <p class="no-artists">No artists to display.</p>
         {{end}}
     </main>
 </body>

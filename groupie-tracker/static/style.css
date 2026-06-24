@@ -1,0 +1,60 @@
+/* Basic styling for Groupie Tracker */
+
+body {
+    font-family: Arial, sans-serif;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1rem;
+    background-color: #f9f9f9;
+    color: #333;
+}
+
+header {
+    background-color: #4a90e2;
+    color: white;
+    padding: 1rem;
+    border-radius: 5px;
+    margin-bottom: 1rem;
+}
+
+header a {
+    color: white;
+    text-decoration: underline;
+}
+
+main {
+    background: white;
+    padding: 1rem;
+    border-radius: 5px;
+}
+
+h1, h2, h3 {
+    color: #2c3e50;
+}
+
+/* Artist cards on the /artists page */
+.artist-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.artist-card {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 1rem;
+    width: 250px;
+    background: #fff;
+}
+
+.artist-card img {
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+/* Utility */
+.no-artists {
+    font-style: italic;
+    color: #888;
+}
